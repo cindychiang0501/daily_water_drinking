@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#eef8f5">
+  <meta name="description" content="簡單記錄每日喝水量，查看今天的飲水進度。">
+  <title>喝水小日常｜每日喝水紀錄器</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #203c3b;
+      --muted: #718582;
+      --green: #347f72;
+      --green-dark: #28665d;
+      --mint: #dff1eb;
+      --paper: #ffffff;
+      --line: #e6efec;
+      --shadow: 0 18px 55px rgba(37, 91, 78, .10);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 32px 18px;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 8%, rgba(194, 231, 215, .72), transparent 29rem),
+        linear-gradient(145deg, #f4faf7 0%, #edf6f5 55%, #f8f5ed 100%);
+      font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    }
+
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+
+    .app { width: min(100%, 760px); margin: 0 auto; }
+
+    .topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin: 0 4px 17px;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    .brand { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: var(--green-dark); }
+    .brand-mark { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 10px; background: #d5eee5; font-size: 1.05rem; }
+
+    .card {
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, .9);
+      border-radius: 26px;
+      background: rgba(255, 255, 255, .94);
+      box-shadow: var(--shadow);
+    }
+
+    .hero { padding: 33px 36px 28px; }
+    h1 { margin: 0; font-size: clamp(1.65rem, 4vw, 2.15rem); letter-spacing: .02em; }
+    .subtitle { margin: 8px 0 0; color: var(--muted); line-height: 1.65; }
+
+    .progress-panel {
+      display: grid;
+      grid-template-columns: 120px minmax(0, 1fr);
+      align-items: center;
+      gap: 25px;
+      margin-top: 28px;
+      padding: 22px 24px;
+      border-radius: 20px;
+      background: linear-gradient(115deg, #f2faf6, #edf7f6);
+    }
+
+    .glass-wrap { display: grid; justify-items: center; gap: 7px; }
+    .glass {
+      position: relative;
+      width: 66px;
+      height: 88px;
+      overflow: hidden;
+      border: 3px solid #98c6ba;
+      border-top: 0;
+      border-radius: 5px 5px 19px 19px;
+      background: rgba(255,255,255,.62);
+      transform: perspective(100px) rotateX(-4deg);
+    }
+    .glass::before {
+      position: absolute;
+      z-index: 2;
+      top: 0;
+      left: -4px;
+      width: 68px;
+      height: 7px;
+      border: 3px solid #98c6ba;
+      border-radius: 50%;
+      background: #f8fffc;
+      content: "";
+    }
+    .water {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      height: 0;
+      border-radius: 50% 50% 0 0 / 10% 10% 0 0;
+      background: linear-gradient(180deg, #95d4c3, #55a996);
+      transition: height .55s cubic-bezier(.2,.8,.2,1);
+    }
+    .water::before {
+      position: absolute;
+      top: -4px;
+      left: -8%;
+      width: 116%;
+      height: 9px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.42);
+      content: "";
+    }
+    .glass-label { color: var(--muted); font-size: .78rem; }
+
+    .progress-copy { min-width: 0; }
+    .amount-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 7px; }
+    .amount { font-size: clamp(2.3rem, 7vw, 3.35rem); font-weight: 800; line-height: 1; letter-spacing: -.04em; }
+    .unit { color: var(--muted); font-size: 1rem; }
+    .goal-line { margin-top: 8px; color: var(--muted); font-size: .92rem; }
+    .bar-track { height: 12px; margin-top: 18px; overflow: hidden; border-radius: 99px; background: #dcebe6; }
+    .bar-fill { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #63b9a1, #347f72); transition: width .5s ease; }
+    .progress-meta { display: flex; justify-content: space-between; gap: 12px; margin-top: 8px; color: var(--muted); font-size: .82rem; }
+
+    .section { padding: 25px 36px 28px; border-top: 1px solid var(--line); }
+    .section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 15px; }
+    h2 { margin: 0; font-size: 1.08rem; }
+    .section-hint { color: var(--muted); font-size: .82rem; }
+
+    .quick-add { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .quick-button {
+      min-height: 80px;
+      padding: 12px;
+      border: 1px solid #d9ebe4;
+      border-radius: 16px;
+      color: var(--green-dark);
+      background: #f6fbf8;
+      transition: transform .15s ease, background .15s ease, border-color .15s ease;
+    }
+    .quick-button:hover { transform: translateY(-2px); border-color: #a8d4c7; background: #edf8f3; }
+    .quick-button:active { transform: translateY(0); }
+    .quick-emoji { display: block; margin-bottom: 5px; font-size: 1.15rem; }
+    .quick-amount { font-weight: 750; }
+
+    .custom-row { display: flex; gap: 10px; margin-top: 13px; }
+    .input-wrap { position: relative; flex: 1; min-width: 0; }
+    .input-wrap input {
+      width: 100%;
+      height: 48px;
+      padding: 0 54px 0 14px;
+      border: 1px solid #dfeae6;
+      border-radius: 13px;
+      outline: none;
+      color: var(--ink);
+      background: white;
+    }
+    .input-wrap input:focus, .goal-input:focus { border-color: #6ab39f; box-shadow: 0 0 0 3px rgba(106,179,159,.15); }
+    .input-unit { position: absolute; top: 50%; right: 14px; color: var(--muted); transform: translateY(-50%); pointer-events: none; }
+    .primary-button {
+      min-width: 108px;
+      padding: 0 18px;
+      border: 0;
+      border-radius: 13px;
+      color: white;
+      background: var(--green);
+      font-weight: 700;
+      transition: background .15s ease, transform .15s ease;
+    }
+    .primary-button:hover { background: var(--green-dark); }
+    .primary-button:active { transform: scale(.98); }
+
+    .goal-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .goal-label { color: var(--muted); font-size: .92rem; }
+    .goal-input { width: 130px; height: 42px; padding: 0 11px; border: 1px solid #dfeae6; border-radius: 11px; outline: none; color: var(--ink); }
+    .small-button { min-height: 40px; padding: 0 14px; border: 1px solid #dceae5; border-radius: 11px; color: var(--green-dark); background: white; font-weight: 650; }
+    .small-button:hover { background: #f3faf7; }
+    .goal-note { margin: 12px 0 0; color: var(--muted); font-size: .8rem; line-height: 1.6; }
+
+    .history { padding-bottom: 25px; }
+    .history-list { display: grid; gap: 8px; }
+    .history-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 13px; border-radius: 12px; background: #f7faf9; }
+    .history-time { color: var(--muted); font-size: .88rem; }
+    .history-value { color: var(--green-dark); font-weight: 700; }
+    .empty-state { padding: 14px; border: 1px dashed #d6e7e1; border-radius: 12px; color: var(--muted); text-align: center; font-size: .9rem; }
+    .history-actions { display: flex; justify-content: flex-end; margin-top: 11px; }
+    .text-button { padding: 5px 0; border: 0; color: var(--muted); background: transparent; font-size: .82rem; text-decoration: underline; text-underline-offset: 3px; }
+    .text-button:hover { color: var(--green-dark); }
+
+    .notice { min-height: 1.5em; margin: 13px 0 0; color: var(--green-dark); font-size: .88rem; }
+    .footer { margin: 15px 8px 0; color: #859490; text-align: center; font-size: .78rem; line-height: 1.6; }
+    button:focus-visible { outline: 3px solid #83c7b3; outline-offset: 3px; }
+
+    @media (max-width: 560px) {
+      body { padding: 19px 12px; }
+      .hero { padding: 26px 20px 23px; }
+      .section { padding: 22px 20px 24px; }
+      .progress-panel { grid-template-columns: 78px minmax(0, 1fr); gap: 15px; padding: 18px 15px; }
+      .glass { width: 54px; height: 76px; }
+      .glass::before { width: 56px; }
+      .amount { font-size: 2.35rem; }
+      .quick-add { gap: 8px; }
+      .quick-button { min-height: 74px; padding: 9px 5px; font-size: .9rem; }
+      .section-heading { align-items: flex-start; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="topline">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">💧</span><span>喝水小日常</span></div>
+      <time id="todayLabel"></time>
+    </div>
+
+    <div class="card">
+      <section class="hero" aria-labelledby="pageTitle">
+        <h1 id="pageTitle">今天喝了多少水？</h1>
+        <p class="subtitle">每一杯都記下來，慢慢累積今天的進度。</p>
+
+        <div class="progress-panel" aria-live="polite">
+          <div class="glass-wrap" aria-hidden="true">
+            <div class="glass"><div class="water" id="waterFill"></div></div>
+            <span class="glass-label">今日進度</span>
+          </div>
+          <div class="progress-copy">
+            <div class="amount-line"><span class="amount" id="totalAmount">0</span><span class="unit">ml</span></div>
+            <div class="goal-line">每日目標 <strong id="goalLabel">2000</strong> ml</div>
+            <div class="bar-track" role="progressbar" id="progressBar" aria-label="今日飲水進度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <div class="bar-fill" id="barFill"></div>
+            </div>
+            <div class="progress-meta"><span id="progressMessage">再記錄一杯，開始累積吧！</span><span id="percentLabel">0%</span></div>
+          </div>
+        </div>
+        <p class="notice" id="notice" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="section" aria-labelledby="addHeading">
+        <div class="section-heading">
+          <h2 id="addHeading">記一杯水</h2>
+          <span class="section-hint">點一下快速新增</span>
+        </div>
+        <div class="quick-add">
+          <button class="quick-button" type="button" data-amount="150"><span class="quick-emoji" aria-hidden="true">🥤</span><span class="quick-amount">+150 ml</span></button>
+          <button class="quick-button" type="button" data-amount="250"><span class="quick-emoji" aria-hidden="true">🫗</span><span class="quick-amount">+250 ml</span></button>
+          <button class="quick-button" type="button" data-amount="500"><span class="quick-emoji" aria-hidden="true">🚰</span><span class="quick-amount">+500 ml</span></button>
+        </div>
+        <form class="custom-row" id="customForm">
+          <label class="input-wrap">
+            <span class="sr-only" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">自訂喝水量（毫升）</span>
+            <input id="customAmount" type="number" min="1" max="5000" step="1" inputmode="numeric" placeholder="輸入其他飲水量" aria-label="自訂喝水量，單位毫升">
+            <span class="input-unit">ml</span>
+          </label>
+          <button class="primary-button" type="submit">新增紀錄</button>
+        </form>
+      </section>
+
+      <section class="section" aria-labelledby="goalHeading">
+        <div class="section-heading">
+          <h2 id="goalHeading">設定每日目標</h2>
+          <span class="section-hint">可隨時調整</span>
+        </div>
+        <form class="goal-row" id="goalForm">
+          <label class="goal-label" for="goalInput">我的目標</label>
+          <input class="goal-input" id="goalInput" type="number" min="100" max="10000" step="100" inputmode="numeric" required>
+          <span class="goal-label">ml / 天</span>
+          <button class="small-button" type="submit">儲存目標</button>
+        </form>
+        <p class="goal-note">目標只是個人紀錄設定，可依自己的需求調整。</p>
+      </section>
+
+      <section class="section history" aria-labelledby="historyHeading">
+        <div class="section-heading">
+          <h2 id="historyHeading">今天的紀錄</h2>
+          <span class="section-hint" id="recordCount">0 筆</span>
+        </div>
+        <div class="history-list" id="historyList"></div>
+        <div class="history-actions"><button class="text-button" id="undoButton" type="button" hidden>復原最後一筆</button></div>
+      </section>
+    </div>
+    <p class="footer">紀錄只會儲存在目前使用的瀏覽器中。<br>記得依自己的狀況安排飲水喔。</p>
+  </main>
+
+  <script>
+    (function () {
+      "use strict";
+
+      var DEFAULT_GOAL = 2000;
+      var GOAL_KEY = "water-daily-goal-v1";
+      var today = getDateKey(new Date());
+      var DAY_KEY = "water-daily-records-" + today;
+      var records = readRecords();
+      var goal = readGoal();
+
+      var elements = {
+        todayLabel: document.getElementById("todayLabel"),
+        totalAmount: document.getElementById("totalAmount"),
+        goalLabel: document.getElementById("goalLabel"),
+        goalInput: document.getElementById("goalInput"),
+        barFill: document.getElementById("barFill"),
+        waterFill: document.getElementById("waterFill"),
+        progressBar: document.getElementById("progressBar"),
+        progressMessage: document.getElementById("progressMessage"),
+        percentLabel: document.getElementById("percentLabel"),
+        historyList: document.getElementById("historyList"),
+        recordCount: document.getElementById("recordCount"),
+        notice: document.getElementById("notice"),
+        undoButton: document.getElementById("undoButton"),
+        customAmount: document.getElementById("customAmount")
+      };
+
+      document.querySelectorAll(".quick-button").forEach(function (button) {
+        button.addEventListener("click", function () {
+          addRecord(Number(button.getAttribute("data-amount")));
+        });
+      });
+
+      document.getElementById("customForm").addEventListener("submit", function (event) {
+        event.preventDefault();
+        var amount = Number(elements.customAmount.value);
+        if (!Number.isFinite(amount) || amount < 1 || amount > 5000) {
+          showNotice("請輸入 1 到 5000 ml 之間的數字。");
+          elements.customAmount.focus();
+          return;
+        }
+        addRecord(Math.round(amount));
+        elements.customAmount.value = "";
+      });
+
+      document.getElementById("goalForm").addEventListener("submit", function (event) {
+        event.preventDefault();
+        var nextGoal = Number(elements.goalInput.value);
+        if (!Number.isFinite(nextGoal) || nextGoal < 100 || nextGoal > 10000) {
+          showNotice("目標請設定在 100 到 10000 ml 之間。");
+          elements.goalInput.focus();
+          return;
+        }
+        goal = Math.round(nextGoal);
+        saveGoal();
+        render();
+        showNotice("每日目標已更新！");
+      });
+
+      elements.undoButton.addEventListener("click", function () {
+        if (!records.length) return;
+        var removed = records.pop();
+        saveRecords();
+        render();
+        showNotice("已復原最後一筆 " + removed.amount + " ml 紀錄。");
+      });
+
+      function getDateKey(date) {
+        var year = date.getFullYear();
+        var month = String(date.getMonth() + 1).padStart(2, "0");
+        var day = String(date.getDate()).padStart(2, "0");
+        return year + "-" + month + "-" + day;
+      }
+
+      function readRecords() {
+        try {
+          var saved = JSON.parse(localStorage.getItem(DAY_KEY) || "[]");
+          if (!Array.isArray(saved)) return [];
+          return saved.filter(function (item) {
+            return item && Number.isFinite(Number(item.amount)) && Number(item.amount) > 0 && typeof item.time === "string";
+          });
+        } catch (error) {
+          return [];
+        }
+      }
+
+      function readGoal() {
+        try {
+          var saved = Number(localStorage.getItem(GOAL_KEY));
+          return Number.isFinite(saved) && saved >= 100 && saved <= 10000 ? Math.round(saved) : DEFAULT_GOAL;
+        } catch (error) {
+          return DEFAULT_GOAL;
+        }
+      }
+
+      function saveRecords() {
+        try { localStorage.setItem(DAY_KEY, JSON.stringify(records)); } catch (error) { showNotice("瀏覽器目前無法儲存紀錄，請檢查儲存空間設定。"); }
+      }
+
+      function saveGoal() {
+        try { localStorage.setItem(GOAL_KEY, String(goal)); } catch (error) { showNotice("瀏覽器目前無法儲存設定。"); }
+      }
+
+      function addRecord(amount) {
+        records.push({ amount: amount, time: new Date().toISOString() });
+        saveRecords();
+        render();
+        showNotice("已新增 " + amount + " ml，做得很好！");
+      }
+
+      function formatTime(isoString) {
+        var date = new Date(isoString);
+        if (Number.isNaN(date.getTime())) return "剛剛";
+        return new Intl.DateTimeFormat("zh-TW", { hour: "2-digit", minute: "2-digit", hour12: false }).format(date);
+      }
+
+      function showNotice(message) {
+        elements.notice.textContent = message;
+      }
+
+      function render() {
+        var total = records.reduce(function (sum, item) { return sum + Number(item.amount); }, 0);
+        var rawPercent = goal > 0 ? total / goal * 100 : 0;
+        var visualPercent = Math.min(100, rawPercent);
+        var remaining = Math.max(0, goal - total);
+
+        elements.totalAmount.textContent = total.toLocaleString("zh-TW");
+        elements.goalLabel.textContent = goal.toLocaleString("zh-TW");
+        elements.goalInput.value = goal;
+        elements.barFill.style.width = visualPercent + "%";
+        elements.waterFill.style.height = visualPercent + "%";
+        elements.progressBar.setAttribute("aria-valuenow", String(Math.round(visualPercent)));
+        elements.percentLabel.textContent = Math.round(rawPercent) + "%";
+        elements.progressMessage.textContent = remaining > 0 ? "距離目標還差 " + remaining.toLocaleString("zh-TW") + " ml" : "今日目標達成啦！";
+        elements.recordCount.textContent = records.length + " 筆";
+        elements.undoButton.hidden = records.length === 0;
+
+        elements.historyList.replaceChildren();
+        if (!records.length) {
+          var empty = document.createElement("div");
+          empty.className = "empty-state";
+          empty.textContent = "今天還沒有紀錄，喝完水就來新增一筆吧。";
+          elements.historyList.appendChild(empty);
+          return;
+        }
+
+        records.slice().reverse().forEach(function (item) {
+          var row = document.createElement("div");
+          row.className = "history-item";
+          var time = document.createElement("span");
+          time.className = "history-time";
+          time.textContent = formatTime(item.time);
+          var amount = document.createElement("span");
+          amount.className = "history-value";
+          amount.textContent = "+" + Number(item.amount).toLocaleString("zh-TW") + " ml";
+          row.append(time, amount);
+          elements.historyList.appendChild(row);
+        });
+      }
+
+      var dateOptions = { year: "numeric", month: "long", day: "numeric", weekday: "long" };
+      elements.todayLabel.textContent = new Intl.DateTimeFormat("zh-TW", dateOptions).format(new Date());
+      render();
+    }());
+  </script>
+</body>
+</html>
